@@ -1,0 +1,427 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>⛓ URLs checker 📌</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="robots" content="noindex, nofollow">
+    <meta name="googlebot" content="noindex, nofollow">
+
+    <style type="text/css">
+        html,body{
+            /*color: white;*/
+            background: #ececec;
+            height: 100%;
+            width: 100%;
+            margin: 0px;
+            font-family: sans-serif;
+        }
+    iframe {
+        width: 100%;
+        height: 100%;
+        background: white;
+    }
+    label{
+        font-size: 9pt;
+    }
+    iframe:after{
+        display: block;
+        content: "IF THE PAGE STAYS BLANK PRESS TAB";
+    }
+    .col-10,
+    .col-20,
+    .col-80{
+        position: relative;
+        display: block;
+        float: left;
+    }
+    .col-10{
+        width:10%
+    }
+    .col-20{
+        width:20%
+    }
+    .col-80{
+        width:80%
+    }
+    .col-80{
+        width:80%
+    }
+    .center{
+        text-align: center;
+    }
+    
+    
+    #s{
+        font-family: monospace;
+        font-weight: bold;
+        padding-left: 1em;
+        
+    }
+    
+    kbd{
+        font-family: sans-serif;
+        font-size: 7pt;
+        color: gray;
+        border: 1px solid silver;
+        border-radius: 2px;
+        padding: 0 1px;
+    }
+    button{
+        white-space: nowrap;
+    }
+    </style>
+</head>
+
+<body>
+    
+    <table style="width: 100%; height: 100%;">
+        <tr height="0">
+            <td width="400">
+                <table style="width: 100%; height: 100%;">
+                    <tr height="0">
+                        <td colspan="3">
+                            <button id="loadUrls">📥 LOAD</button> <button id="clearUrls">✖️ CLEAR</button>
+                            <button id="openAll" data-normal="OPEN IN TABS 🗂" data-other="✋ STOP OPENING TABS!">OPEN IN TABS 🗂</button>
+                            
+                            <label><input id="afterFlag" type="checkbox">Flag on tab close</label>
+                        </td>
+                    </tr>
+                    
+                    <tr height="0">
+                        <td colspan="3">
+                            <textarea id="urls" id="" cols="100" rows="6" style="width:100%;" placeholder="One URL per line">
+                                http://vitim.us
+                                http://oldblog.vitim.us
+                                http://vitim.com.br
+                                http://www.instructables.com/member/Vitim/
+                            </textarea>
+                        </td>
+                    </tr>
+                    
+                    <tr height="0">
+                        <td colspan="3" class="center">
+                            <div id="s">Click load</div>
+                            
+                            <button id="prev">⬅️ PREV</button>
+                            <button id="next">NEXT ➡️</button>
+                            
+                            
+                        </td>
+                    </tr>
+                    
+                    <tr height="0">
+                        <td class="center" colspan="3">
+                            <button id="exportFlags">📋 EXPORT FLAGS</button>
+                            <button id="flag">📌 FLAG <kbd>shift</kbd></button>
+                        </td>
+                    </tr>
+                    <tr height="0">
+                        <td colspan="0">
+                        </td>
+                        <td colspan="0">
+                            <input type="text" id="currUrl" size="100" style="width:100%;">
+                        </td>
+                        <td colspan="0">
+                            <button id="openExt">⏏ POPUP <kbd>tab</kbd></button>
+                            <button id="go" style="display:none">GO ➽ <kbd>enter</kbd></button>
+                        </td>
+                    </tr>
+                    
+                    <tr>
+                        <td colspan="3">
+                            <select id="select" size="10" style="width:100%; height: 100%;"></select>
+                        </td>
+                    </tr>
+                </table>
+            </td>
+            <td style="position: relative; background: white;">
+                <div style="position: absolute; z-index: -1;">
+                    If the page doesn't load press TAB
+                </div>
+                <iframe id="frame"></iframe>
+            </td>
+        </tr>
+    </table>
+    
+    
+    <script type='text/javascript'>
+    var defUrls = [
+        "http://vitim.us",
+        "http://oldblog.vitim.us",
+        "http://vitim.com.br",
+        "http://www.instructables.com/member/Vitim/",
+    ];
+
+    var i;
+    var urlsArray;
+    var metaArray;
+    
+    window.onload = function(){
+        i=-1;
+        urlsArray = localStorage.urlCheckerUrls ? JSON.parse(localStorage.urlCheckerUrls) : defUrls;
+        metaArray = localStorage.urlCheckerMetaArray ? JSON.parse(localStorage.urlCheckerMetaArray) : urlsArray.map(function(){return 0;});
+        
+        urls.value = urlsArray.join('\n');   
+        
+        s.innerHTML = "Loaded "+urlsArray.length+" urls!";
+        currUrl.value = 'Click NEXT';
+        console.log('loaded');
+        
+        poppulateSelect(select, urlsArray.map(function(url,i){ return getUrlWithFlag(i); }));
+
+        btns();
+    };
+    
+    
+    document.body.onkeydown = function(e){
+        console.log('keydown', e);
+        var ARROW_RIGHT = 39;
+        var ARROW_LEFT = 37;
+        var TAB = 9;
+        var ENTER = 13;
+        var SHIFT = 16;
+        
+        if(e.keyCode===ARROW_RIGHT){
+            e.preventDefault();
+            next.click();
+        }
+        if(e.keyCode===ARROW_LEFT){
+            e.preventDefault();
+            prev.click();
+        }
+        if(e.keyCode===TAB){
+            e.preventDefault();
+            openExt.click();
+        }
+        if(e.keyCode===ENTER){
+            e.preventDefault();
+            go.click();
+        }
+        
+        if(e.keyCode===SHIFT){
+            e.preventDefault();
+            flag.click();
+        }
+    };
+    
+    var popupSequence = false;
+    //popup mode
+    openAll.onclick = function() {
+        urls.value = urls.value.trim();
+        urlsArray = urls.value.split(/\n/);
+        
+        
+        function nextPopup(){
+            if(i<urlsArray.length-1){
+                i++;
+                
+                select.value=i;
+                select.focus();
+                
+                s.innerHTML = "Popup "+(i)+" / "+(urlsArray.length)+"";
+                
+                // setUrl(i);
+                frame.src="about:blank";
+                
+                var popup = openPopup(urlsArray[i], function(){
+                    if(afterFlag.checked){
+                        var r = confirm("Flag this URL (❌=CANCEL / ✅=OK)")
+                        metaArray[i] = r===true?1:-1;
+                        select.item(i).innerHTML = getUrlWithFlag(i);
+                        localStorage.urlCheckerMetaArray = JSON.stringify(metaArray);
+                    }
+                    if(popupSequence) nextPopup();
+                });
+            }
+            else{
+                popupSequence = false;
+                alert("FINISHED!"+ " Popup "+(i+1)+" / "+(urlsArray.length)+"");
+                openAll.innerHTML = openAll.getAttribute('data-normal');
+            }
+        }
+
+        if(popupSequence===false){
+            i = -1;
+            popupSequence = true;
+            loadUrls.click();
+            nextPopup();
+        }
+        else{
+            popupSequence = false;
+            alert("OK I will stop!");
+        }
+        openAll.innerHTML = popupSequence ? openAll.getAttribute('data-other') : openAll.getAttribute('data-normal');
+        
+    };
+    
+    function openPopup(url, onclose){
+        var popup = window.open(url);
+        if(!popup){
+            alert("Please disable POPUP Blocker!");
+            onclose();
+        }
+        else {
+            //opened
+            onclosepopup(popup, onclose);
+        }
+        
+        function onclosepopup(popup, cb){
+            var t = setInterval(function() {
+                if (popup){
+                    if (popup.closed) {
+                        clearInterval(t);
+                        cb();
+                    }
+                    else{
+                        //still open
+                    }
+                }
+                else{
+                    clearInterval(t);
+                    cb();
+                }
+            }, 1E3/10);    
+        }
+        return popup;
+    }
+    
+    urls.onkeydown = function(e){
+        e.stopPropagation();
+    };
+    
+    clearUrls.onclick = function(e){
+        delete localStorage.urlCheckerUrls;
+        delete localStorage.urlCheckerMetaArray;
+        
+        urlsArray = [];
+        metaArray = [];
+        urls.value = "";
+        s.innerHTML = "-/-";
+        select.innerHTML = "";
+        
+        btns();
+        urls.focus();
+    };
+    
+    
+    function getUrlWithFlag(i){
+        var metaSymbols = {
+            '-1':"❌",
+            '0':"➖",
+            '1':"✅",
+        };
+        return metaSymbols[+metaArray[i]]+" "+urlsArray[i];
+    }
+    
+    flag.onclick = function(){
+        metaArray[i] = metaArray[i]==0?1:metaArray[i]==1?-1:0; //cycle -1,0,1
+        
+        select.item(i).innerHTML = getUrlWithFlag(i);
+        localStorage.urlCheckerMetaArray = JSON.stringify(metaArray);
+    }
+    
+    exportFlags.onclick = function(){
+        prompt("Flags", urlsArray.map(function(url,i){
+            var f = metaArray[i];
+            return i+"="+f;
+        }));
+    }
+    
+    loadUrls.onclick = function() {
+        i = -1;
+        
+        metaArray = [];
+        
+        urlsArray = [];
+        urls.value.split(/\n/).forEach(function(line){
+            line = line.trim();
+            if(line.match(/^https?:\/\/.+/)){
+                urlsArray.push(line);
+                metaArray.push(0);
+            }
+        });
+        
+        s.innerHTML = "Loaded "+urlsArray.length+" urls!";
+        currUrl.value = 'Click NEXT';
+        console.log('loaded');
+        
+        poppulateSelect(select, urlsArray.map(function(url,i){ return getUrlWithFlag(i); }));
+
+        btns();
+        
+        localStorage.urlCheckerUrls = JSON.stringify(urlsArray);
+        localStorage.urlCheckerMetaArray = JSON.stringify(metaArray);
+    };
+    
+    select.onchange = function(){
+        i = parseInt(select.value);
+        setUrl(i);
+        btns();
+    };
+    
+    go.onclick = function(){
+        frame.src = currUrl.value;
+
+        s.innerHTML = "New URL";
+        currUrl.focus();
+    };
+    
+    prev.onclick = function() {
+        if (i > 0) {
+            setUrl(--i);
+        }
+
+        btns();
+    };
+    
+    next.onclick = function() {
+        if (i < urlsArray.length) {
+            setUrl(++i);
+        }
+        btns();
+    };
+    
+    openExt.onclick = function(){
+        window.open(urlsArray[i]);
+    };
+
+    var t;
+    function setUrl(i) {
+        frame.src = "about:blank";
+        clearTimeout(t);
+        
+        t = setTimeout(function(){
+            currUrl.value = urlsArray[i];
+            frame.src = urlsArray[i];
+
+            s.innerHTML = ""+(i+1)+" / "+(urlsArray.length)+"";
+            select.value = i;
+            select.focus();
+        },10);
+    }
+
+    function btns() {
+        prev.disabled = !(i>0);
+        next.disabled = i < urlsArray.length - 1 ? false : true;
+        openExt.disabled = urlsArray.length < 1 || i<0;
+        currUrl.disabled = urlsArray.length < 1 || i<0;
+        flag.disabled = urlsArray.length < 1 || i<0;
+        exportFlags.disabled = urlsArray.length < 1 || i<0;
+        
+        if(urlsArray.length===0){
+            currUrl.value = "No URL";
+        }
+    }
+    
+    
+    function poppulateSelect(select, options){
+        select.innerHTML = "";
+        options.forEach(function(opt, i){
+            select.appendChild(new Option(opt, i));
+        });
+    }
+    </script>
+
+</body>
+
+</html>
