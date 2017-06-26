@@ -145,23 +145,43 @@
     
     
     <script type='text/javascript'>
+    
     var defUrls = [
         "http://vitim.us",
         "http://oldblog.vitim.us",
         "http://vitim.com.br",
         "http://www.instructables.com/member/Vitim/",
     ];
-
+    
+    const HASHURLSEPARATOR = ";";
+    
     var i;
     var urlsArray;
     var metaArray;
     
     window.onload = function(){
-        i=-1;
-        urlsArray = localStorage.urlCheckerUrls ? JSON.parse(localStorage.urlCheckerUrls) : defUrls;
-        metaArray = localStorage.urlCheckerMetaArray ? JSON.parse(localStorage.urlCheckerMetaArray) : urlsArray.map(function(){return 0;});
+        var hash = location.hash;
+        hash = hash.substring(1);
+        if(hash) {
+            var sharedUrls = hash.split(HASHURLSEPARATOR);
+            sharedUrls = sharedUrls.map(function(r){ return decodeURIComponent(r);});
+            location.hash = "";
+            
+            urlsArray = sharedUrls;
+            metaArray = sharedUrls.map(function(){return 0;});
+            
+            i=-1;
+            localStorage.urlCheckerUrls = JSON.stringify(urlsArray);
+            localStorage.urlCheckerMetaArray = JSON.stringify(metaArray);
+        } else {
+            
+            i=-1;
+            urlsArray = localStorage.urlCheckerUrls ? JSON.parse(localStorage.urlCheckerUrls) : defUrls;
+            metaArray = localStorage.urlCheckerMetaArray ? JSON.parse(localStorage.urlCheckerMetaArray) : urlsArray.map(function(){return 0;});
+        }
         
-        urls.value = urlsArray.join('\n');   
+        
+        urls.value = urlsArray.join('\n'); 
         
         s.innerHTML = "Loaded "+urlsArray.length+" urls!";
         currUrl.value = 'Click NEXT';
@@ -351,6 +371,8 @@
         
         localStorage.urlCheckerUrls = JSON.stringify(urlsArray);
         localStorage.urlCheckerMetaArray = JSON.stringify(metaArray);
+        
+        location.hash = urlsArray.map(function(r){ return encodeURIComponent(r);}).join(HASHURLSEPARATOR);
     };
     
     select.onchange = function(){
